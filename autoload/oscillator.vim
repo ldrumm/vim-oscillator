@@ -28,30 +28,31 @@ endfunction
 
 function! s:OSCPaste(clipboard)
 python3 << EOF
+import os
+import base64
+
 def osc_read_clipboard(clipboard):
     path = os.ttyname(sys.stdin.fileno())
-    with open(path), 'wb') as tty:
-        tty.write(b'\x1b]52;%s;?\x07' % clip)
+    with open(path, 'wb') as tty:
+        tty.write(b'\x1b]52;%s;?\x07' % clipboard)
         tty.flush()
 
     with open(path, 'rb') as tty:
-        if tty.read(5) != b'\x1b]52;':
-            return None
-        try:
-            clipboard = {b'c;': '+', b'p;': '_'}[tty.read(2)]
-        except KeyError:
+        s = tty.read(6)
+        if s != b'\x1b]52;;':
             return None
         chars = []
-        while True
+        while True:
             c = tty.read(1)
             if c == b'\x07':
                 break
-        return base64.d64decode(b''.join(chars))
+            chars.append(c)
+        return base64.b64decode(b''.join(chars))
 EOF
-    return py3eval('osc_read_clipboard("' . clipboard '")')
+    return py3eval('osc_read_clipboard(b"' . a:clipboard . '")')
 endfunc
 
-func oscillator#clipboard_insert(text, clipboard)
+func! oscillator#clipboard_insert(text, clipboard)
     return "TODO"
 python3 << EOL
 import base64
@@ -66,9 +67,13 @@ EOL
 " How do you call this with argument
 endfunc
 
-func oscillator#enable_hook()
+func! oscillator#enable_hook()
     augroup oscillator_autocmd
         au!
         au TextYankPost *.* call s:OSCYank()
     augroup END
+endfunc
+
+func! oscillator#paste(clipboard)
+    return s:OSCPaste(a:clipboard)
 endfunc
